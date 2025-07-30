@@ -27,7 +27,7 @@ const uint8_t digitToSegment[] = {
     0x6f  // 9
 };
 
-void tm1637_start() {
+void tm1637_start_IR() {
     gpio_put(TM1637_CLK_PIN, 1);
     gpio_put(TM1637_DIO_PIN, 1);
     sleep_us(2);
@@ -36,7 +36,7 @@ void tm1637_start() {
     gpio_put(TM1637_CLK_PIN, 0);
 }
 
-void tm1637_stop() {
+void tm1637_stop_IR() {
     gpio_put(TM1637_CLK_PIN, 0);
     sleep_us(2);
     gpio_put(TM1637_DIO_PIN, 0);
@@ -46,7 +46,7 @@ void tm1637_stop() {
     gpio_put(TM1637_DIO_PIN, 1);
 }
 
-void tm1637_write_byte(uint8_t b) {
+void tm1637_write_byte_IR(uint8_t b) {
     for (int i = 0; i < 8; i++) {
         gpio_put(TM1637_CLK_PIN, 0);
         gpio_put(TM1637_DIO_PIN, (b >> i) & 1);
@@ -64,29 +64,29 @@ void tm1637_write_byte(uint8_t b) {
     gpio_put(TM1637_CLK_PIN, 0);
 }
 
-void tm1637_set_brightness(uint8_t brightness) {
-    tm1637_start();
-    tm1637_write_byte(0x88 | (brightness & 0x07));
-    tm1637_stop();
+void tm1637_set_brightness_IR(uint8_t brightness) {
+    tm1637_start_IR();
+    tm1637_write_byte_IR(0x88 | (brightness & 0x07));
+    tm1637_stop_IR();
 }
 
-void tm1637_display_digits(int d0, int d1, int d2, int d3, bool colon) {
-    tm1637_start();
-    tm1637_write_byte(0x40); // Set auto-increment mode
-    tm1637_stop();
+void tm1637_display_digits_IR(int d0, int d1, int d2, int d3, bool colon) {
+    tm1637_start_IR();
+    tm1637_write_byte_IR(0x40); // Set auto-increment mode
+    tm1637_stop_IR();
 
-    tm1637_start();
-    tm1637_write_byte(0xc0); // Start address 0
-    tm1637_write_byte(digitToSegment[d0]);
+    tm1637_start_IR();
+    tm1637_write_byte_IR(0xc0); // Start address 0
+    tm1637_write_byte_IR(digitToSegment[d0]);
     uint8_t seg1 = digitToSegment[d1];
     if (colon) seg1 |= 0x80; // Add colon if needed
-    tm1637_write_byte(seg1);
-    tm1637_write_byte(digitToSegment[d2]);
-    tm1637_write_byte(digitToSegment[d3]);
-    tm1637_stop();
+    tm1637_write_byte_IR(seg1);
+    tm1637_write_byte_IR(digitToSegment[d2]);
+    tm1637_write_byte_IR(digitToSegment[d3]);
+    tm1637_stop_IR();
 }
 
-void tm1637_init() {
+void tm1637_init_IR() {
     gpio_init(TM1637_DIO_PIN);
     gpio_init(TM1637_CLK_PIN);
     gpio_set_dir(TM1637_DIO_PIN, GPIO_OUT);
@@ -101,17 +101,17 @@ void init_IR() {
 
 void run_IR() {
     stdio_init_all();
-    tm1637_init();
+    tm1637_init_IR();
     init_IR();
 
-    tm1637_set_brightness(7); // Max brightness
+    tm1637_set_brightness_IR(7); // Max brightness
 
     int minutes = 0;
     int seconds = 0;
 
     printf("Waiting for car...\n");
     while (gpio_get(BBIF_PIN) != 0) {
-        tm1637_display_digits(0, 0, 0, 0, true);
+        tm1637_display_digits_IR(0, 0, 0, 0, true);
         sleep_ms(200);
     }
     printf("Car passed! Timer started.\n");
@@ -121,7 +121,7 @@ void run_IR() {
         int d1 = minutes % 10;
         int d2 = seconds / 10;
         int d3 = seconds % 10;
-        tm1637_display_digits(d0, d1, d2, d3, true);
+        tm1637_display_digits_IR(d0, d1, d2, d3, true);
 
         sleep_ms(1000); // 1 second
 
