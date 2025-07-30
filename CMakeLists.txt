@@ -34,6 +34,7 @@ if(CrossCompiling)
         src/drivers/logging/logging.cpp
         src/drivers/loadcell.cpp
         src/drivers/IR.cpp
+        src/drivers/ultrasonic.cpp
     )
     target_include_directories(labs
         PUBLIC 
