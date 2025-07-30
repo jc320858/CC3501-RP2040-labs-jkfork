@@ -33,6 +33,7 @@ if(CrossCompiling)
         src/main.cpp
         src/drivers/logging/logging.cpp
         src/drivers/loadcell.cpp
+        src/drivers/IR.cpp
     )
     target_include_directories(labs
         PUBLIC 
