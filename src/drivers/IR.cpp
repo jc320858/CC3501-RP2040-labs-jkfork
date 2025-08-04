@@ -100,46 +100,57 @@ void init_IR() {
 }
 
 void run_IR() {
-    stdio_init_all();
-    tm1637_init_IR();
-    init_IR();
-
-    tm1637_set_brightness_IR(7); // Max brightness
-
-    int minutes = 0;
-    int seconds = 0;
-
-    printf("Waiting for car...\n");
-    while (gpio_get(BBIF_PIN) != 0) {
-        tm1637_display_digits_IR(0, 0, 0, 0, true);
-        sleep_ms(200);
+    static bool initialised = false;
+    if (!initialised) {
+        tm1637_init_IR();
+        init_IR();
+        tm1637_set_brightness_IR(7); // Max brightness
+        initialised = true;
+        printf("IR system initialized.\n");
     }
-    printf("Car passed! Timer started.\n");
-    
-    while (true) {
-        int d0 = minutes / 10;
-        int d1 = minutes % 10;
-        int d2 = seconds / 10;
-        int d3 = seconds % 10;
-        tm1637_display_digits_IR(d0, d1, d2, d3, true);
 
-        sleep_ms(1000); // 1 second
+    static int minutes = 0;
+    static int seconds = 0;
+    static bool timing = false;
+    static absolute_time_t last_tick;
+    static bool last_beam = true;
 
-        seconds++;
-        if (seconds > 59) {
-            seconds = 0;
-            minutes++;
-            if (minutes > 99) { // Roll over after 99:59
-                minutes = 0;
-            }
-        }
+    bool beam_present = gpio_get(BBIF_PIN);
 
-        // Restart
-        if (gpio_get(BBIF_PIN) == 0) {
-            printf("Lap completed, time displayed.\n");
+
+    if (last_beam && !beam_present) {
+        if (!timing) {
+            // Start timer
+            timing = true;
             minutes = 0;
             seconds = 0;
-            sleep_ms(200); 
+            last_tick = get_absolute_time();
+            printf("Car passed! Timer started.\n");
+        } else {
+            // Lap completed, show time and reset
+            printf("Lap completed, time displayed: %02d:%02d\n", minutes, seconds);
+            timing = false;
         }
     }
+    last_beam = beam_present;
+
+    if (timing) {
+        if (absolute_time_diff_us(last_tick, get_absolute_time()) >= 1000000) {
+            last_tick = delayed_by_us(last_tick, 1000000);
+            seconds++;
+            if (seconds > 59) {
+                seconds = 0;
+                minutes++;
+                if (minutes > 99) minutes = 0;
+            }
+        }
+    }
+
+    // Display timer
+    int d0 = minutes / 10;
+    int d1 = minutes % 10;
+    int d2 = seconds / 10;
+    int d3 = seconds % 10;
+    tm1637_display_digits_IR(d0, d1, d2, d3, true);
+
 }
