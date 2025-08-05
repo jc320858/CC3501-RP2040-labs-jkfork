@@ -48,7 +48,7 @@ int main() {
         switch (mode) {
             case 0:
                 printf("Weighing mode\n");
-                lc_calibrate();
+                lc_calibrate_send();
                 break;
             case 1:
                 printf("Race mode\n");

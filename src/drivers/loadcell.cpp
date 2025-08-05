@@ -14,6 +14,11 @@
 #define DISPLAY_CLK_PIN 19
 #define BBIF_PIN 4
 
+#define UART_ID uart0
+#define BAUD_RATE 115200
+#define TX_PIN 0
+#define RX_PIN 1
+
 // Add function declarations here
 void tm1637_init();
 void tm1637_start();
@@ -239,4 +244,62 @@ void display_weight(float weight_kg) {
     tm1637_start();
     tm1637_write_byte(0x8F); // Display control (brightness)
     tm1637_stop();
+}
+
+void lc_calibrate_send() {
+    printf("Load Cell Test Program\n");
+    printf("Press 'c' to calibrate, or any other key to start reading...\n");
+    
+    // Initialize display
+    gpio_init(DISPLAY_CLK_PIN);
+    gpio_init(DISPLAY_DIO_PIN);
+    gpio_set_dir(DISPLAY_CLK_PIN, GPIO_OUT);
+    gpio_set_dir(DISPLAY_DIO_PIN, GPIO_OUT);
+    gpio_put(DISPLAY_CLK_PIN, 1);
+    gpio_put(DISPLAY_DIO_PIN, 1);
+     
+    char input = getchar();
+    if (input == 'c' || input == 'C') {
+        printf("Starting load cell calibration...\n");
+        
+        // Step 1: Tare (zero point)
+        lc_calibrate_tare();
+        
+        // Step 2: Scale factor with known weight
+        printf("Enter the weight of your calibration object in kg: ");
+        float known_weight;
+        scanf("%f", &known_weight);
+        
+        lc_calibrate_scale(known_weight);
+        
+        printf("Calibration complete!\n");
+    }
+
+    sleep_ms(2000);
+
+    printf("Starting weight measurements and UART transmission...\n");
+    printf("Sending readings every 15 seconds...\n");
+    
+    while (1) {
+        float weight_kg = lc_get_weight_kg();
+        
+        // Display locally
+        printf("Weight: %.3f kg\n", weight_kg);
+        
+        // Send JSON data to Raspberry Pi
+        char json_buffer[128];
+        snprintf(json_buffer, sizeof(json_buffer), 
+                "{\"weight\":%.3f,\"unit\":\"kg\",\"timestamp\":%lu}\n", 
+                weight_kg, to_ms_since_boot(get_absolute_time()));
+        uart_puts(UART_ID, json_buffer);
+        
+        printf("Sent to Pi: %s", json_buffer);
+        
+        // Display weight on 7-segment display
+        display_weight(weight_kg);
+        
+        // Wait 15 seconds before next reading
+        printf("Waiting 5 seconds for next reading...\n");
+        sleep_ms(15000);  // 10 seconds = 10,000 milliseconds
+    }
 }

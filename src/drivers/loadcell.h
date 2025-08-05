@@ -27,3 +27,4 @@ void tm1637_write_byte(uint8_t data);
 
 void display_weight(float weight_kg);
 
+void lc_calibrate_send();
