@@ -11,6 +11,11 @@
 
 #define BUTTON_PIN 15  // Change to your button's GPIO pin
 
+#define UART_ID uart0
+#define BAUD_RATE 115200
+#define TX_PIN 0
+#define RX_PIN 1
+
 volatile bool button_pressed = false;
 
 // Interrupt handler function
@@ -26,6 +31,11 @@ int main() {
     ultra_init();
     tm1637_init();
 
+    // Initialize UART
+    uart_init(UART_ID, BAUD_RATE);
+    gpio_set_function(TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(RX_PIN, GPIO_FUNC_UART);
+
 
     // Initialize button GPIO
     gpio_init(BUTTON_PIN);
@@ -37,21 +47,26 @@ int main() {
     int mode = 0; // State variable for toggling functions
     const int NUM_MODES = 2; // Change this to the number of functions you want to toggle
 
-    while (true) {
+     while (true) {
         if (button_pressed) {
             button_pressed = false;
             mode = (mode + 1) % NUM_MODES; // Cycle through modes
             printf("Button pressed! Switched to mode %d\n", mode);
+            
+            // Print mode name once when switching
+            if (mode == 0) {
+                printf("Entering Weighing mode\n");
+            } else {
+                printf("Entering Race mode\n");
+            }
         }
 
-        // Call different functions based on mode
+        // Call different functions based on mode (without printing mode repeatedly)
         switch (mode) {
             case 0:
-                printf("Weighing mode\n");
                 lc_calibrate_send();
                 break;
             case 1:
-                printf("Race mode\n");
                 run_ultrasonic();
                 run_IR();
                 break;
@@ -59,7 +74,6 @@ int main() {
         sleep_ms(10); // Debounce delay
     }
 }
-
 
       
 

@@ -246,41 +246,52 @@ void display_weight(float weight_kg) {
     tm1637_stop();
 }
 
+static bool lc_send_initialized = false;
+static absolute_time_t last_send_time = {0};
+static const uint32_t SEND_INTERVAL_MS = 15000; // 15 seconds
+
 void lc_calibrate_send() {
-    printf("Load Cell Test Program\n");
-    printf("Press 'c' to calibrate, or any other key to start reading...\n");
-    
-    // Initialize display
-    gpio_init(DISPLAY_CLK_PIN);
-    gpio_init(DISPLAY_DIO_PIN);
-    gpio_set_dir(DISPLAY_CLK_PIN, GPIO_OUT);
-    gpio_set_dir(DISPLAY_DIO_PIN, GPIO_OUT);
-    gpio_put(DISPLAY_CLK_PIN, 1);
-    gpio_put(DISPLAY_DIO_PIN, 1);
-     
-    char input = getchar();
-    if (input == 'c' || input == 'C') {
-        printf("Starting load cell calibration...\n");
+    // One-time initialization
+    if (!lc_send_initialized) {
+        printf("Load Cell Test Program\n");
+        printf("Press 'c' to calibrate, or any other key to start reading...\n");
         
-        // Step 1: Tare (zero point)
-        lc_calibrate_tare();
+        // Initialize display
+        gpio_init(DISPLAY_CLK_PIN);
+        gpio_init(DISPLAY_DIO_PIN);
+        gpio_set_dir(DISPLAY_CLK_PIN, GPIO_OUT);
+        gpio_set_dir(DISPLAY_DIO_PIN, GPIO_OUT);
+        gpio_put(DISPLAY_CLK_PIN, 1);
+        gpio_put(DISPLAY_DIO_PIN, 1);
+         
+        char input = getchar();
+        if (input == 'c' || input == 'C') {
+            printf("Starting load cell calibration...\n");
+            
+            // Step 1: Tare (zero point)
+            lc_calibrate_tare();
+            
+            // Step 2: Scale factor with known weight
+            printf("Enter the weight of your calibration object in kg: ");
+            float known_weight;
+            scanf("%f", &known_weight);
+            
+            lc_calibrate_scale(known_weight);
+            
+            printf("Calibration complete!\n");
+        }
+
+        printf("Starting weight measurements and UART transmission...\n");
+        printf("Sending readings every 15 seconds...\n");
         
-        // Step 2: Scale factor with known weight
-        printf("Enter the weight of your calibration object in kg: ");
-        float known_weight;
-        scanf("%f", &known_weight);
-        
-        lc_calibrate_scale(known_weight);
-        
-        printf("Calibration complete!\n");
+        last_send_time = get_absolute_time();
+        lc_send_initialized = true;
+        return; // Exit to allow button checking
     }
-
-    sleep_ms(2000);
-
-    printf("Starting weight measurements and UART transmission...\n");
-    printf("Sending readings every 15 seconds...\n");
     
-    while (1) {
+    // Check if it's time for next measurement and transmission
+    absolute_time_t now = get_absolute_time();
+    if (absolute_time_diff_us(last_send_time, now) >= SEND_INTERVAL_MS * 1000) {
         float weight_kg = lc_get_weight_kg();
         
         // Display locally
@@ -298,8 +309,7 @@ void lc_calibrate_send() {
         // Display weight on 7-segment display
         display_weight(weight_kg);
         
-        // Wait 15 seconds before next reading
-        printf("Waiting 5 seconds for next reading...\n");
-        sleep_ms(15000);  // 10 seconds = 10,000 milliseconds
+        printf("Next reading in 15 seconds...\n");
+        last_send_time = now;
     }
 }
