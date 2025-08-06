@@ -46,7 +46,7 @@ int main() {
     gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_RISE, true, &button_irq_handler);
 
     int mode = 0; // State variable for toggling functions
-    const int NUM_MODES = 2; // Change this to the number of functions you want to toggle
+    const int NUM_MODES = 3; // Change this to the number of functions you want to toggle
 
      while (true) {
         if (button_pressed) {
@@ -57,10 +57,13 @@ int main() {
             // Print mode name once when switching
             if (mode == 0) {
                 printf("Entering Weighing mode\n");
-            } else {
+            } else if (mode == 1){
                 printf("Entering Race mode\n");
+            } else {
+                printf("Entering idle mode\n");
             }
         }
+        
 
         // Call different functions based on mode (without printing mode repeatedly)
         switch (mode) {
@@ -70,6 +73,8 @@ int main() {
             case 1:
                 run_ultrasonic();
                 run_IR();
+                break;
+            case 2:
                 break;
         }
         sleep_ms(10); // Debounce delay
