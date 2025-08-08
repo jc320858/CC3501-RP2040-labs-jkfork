@@ -8,12 +8,14 @@
 #include "pico/binary_info.h"
 #include "hardware/adc.h"
 
+// Load cell and display configuration
 #define HX711_DOUT_PIN 2
 #define HX711_SCK_PIN 3
 #define DISPLAY_DIO_PIN 18
 #define DISPLAY_CLK_PIN 19
 #define BBIF_PIN 4
 
+// UART configuration
 #define UART_ID uart0
 #define BAUD_RATE 115200
 #define TX_PIN 0
@@ -26,6 +28,7 @@ void tm1637_stop();
 void tm1637_write_byte(uint8_t data);
 void display_weight(float weight_kg);
 
+// Loadcell initialisation
 void hx711_init() {
     gpio_init(HX711_DOUT_PIN);
     gpio_init(HX711_SCK_PIN);
@@ -34,6 +37,7 @@ void hx711_init() {
     gpio_put(HX711_SCK_PIN, 0);
 }
 
+// Function to read data from HX711 load cell, returns raw value
 uint32_t hx711_read() {
     uint32_t data = 0;
     
@@ -64,10 +68,10 @@ uint32_t hx711_read() {
     return data;
 }
 
+// Function to convert raw HX711 value to weight in kg
 float hx711_get_weight_kg(uint32_t raw_value, uint32_t zero_offset, float scale_factor) {
     return (float)(raw_value - zero_offset) / scale_factor;
 }
-
 
 // Add these global variables after your defines
 static uint32_t tare_offset = 0;
@@ -83,6 +87,7 @@ void lc_calibrate_tare() {
     uint32_t sum = 0;
     int samples = 10;
     
+    // Take multiple readings to get a stable tare offset
     for (int i = 0; i < samples; i++) {
         sum += hx711_read();
         sleep_ms(100);
@@ -102,11 +107,13 @@ void lc_calibrate_scale(float known_weight_kg) {
     uint32_t sum = 0;
     int samples = 10;
     
+    //
     for (int i = 0; i < samples; i++) {
         sum += hx711_read();
         sleep_ms(100);
     }
     
+    // Calculate calibration factor
     uint32_t loaded_reading = sum / samples;
     calibration_factor = (float)(loaded_reading - tare_offset) / known_weight_kg;
     
@@ -161,6 +168,8 @@ void lc_calibrate() {
     }
 }
 
+// TM1637 7-segment display functions
+// Initialize the TM1637 display
 void tm1637_init() {
     gpio_init(DISPLAY_CLK_PIN);
     gpio_init(DISPLAY_DIO_PIN);
@@ -170,11 +179,13 @@ void tm1637_init() {
     gpio_put(DISPLAY_DIO_PIN, 1);
 }
 
+// Start communication with the TM1637 display
 void tm1637_start() {
     gpio_put(DISPLAY_DIO_PIN, 0);
     sleep_us(50);
 }
 
+// Stop communication with the TM1637 display
 void tm1637_stop() {
     gpio_put(DISPLAY_CLK_PIN, 0);
     sleep_us(50);
@@ -185,6 +196,7 @@ void tm1637_stop() {
     gpio_put(DISPLAY_DIO_PIN, 1);
 }
 
+// Write a byte to the TM1637 display
 void tm1637_write_byte(uint8_t data) {
     for (int i = 0; i < 8; i++) {
         gpio_put(DISPLAY_CLK_PIN, 0);
@@ -208,6 +220,7 @@ void tm1637_write_byte(uint8_t data) {
     gpio_put(DISPLAY_CLK_PIN, 0);
 }
 
+// Display weight on the TM1637 7-segment display
 void display_weight(float weight_kg) {
     // Convert weight to display format (e.g., 1.234 kg -> show "1234")
     int weight_display = (int)(fabs(weight_kg) * 1000); // Show as grams (multiply by 1000)
@@ -246,10 +259,13 @@ void display_weight(float weight_kg) {
     tm1637_stop();
 }
 
+// Function to send load cell data periodically
+// This function will be called in the main loop to send data every 15 seconds
 static bool lc_send_initialized = false;
 static absolute_time_t last_send_time = {0};
 static const uint32_t SEND_INTERVAL_MS = 15000; // 15 seconds
 
+// Function to send load cell data over UART
 void lc_calibrate_send() {
     // One-time initialization
     if (!lc_send_initialized) {
@@ -263,7 +279,8 @@ void lc_calibrate_send() {
         gpio_set_dir(DISPLAY_DIO_PIN, GPIO_OUT);
         gpio_put(DISPLAY_CLK_PIN, 1);
         gpio_put(DISPLAY_DIO_PIN, 1);
-         
+        
+        // Initialize UART
         char input = getchar();
         if (input == 'c' || input == 'C') {
             printf("Starting load cell calibration...\n");
@@ -284,6 +301,7 @@ void lc_calibrate_send() {
         printf("Starting weight measurements and UART transmission...\n");
         printf("Sending readings every 15 seconds...\n");
         
+        // Initialize last send time
         last_send_time = get_absolute_time();
         lc_send_initialized = true;
         return; // Exit to allow button checking

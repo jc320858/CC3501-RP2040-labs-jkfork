@@ -6,18 +6,16 @@
 #include "drivers/IR.h"
 #include "drivers/ultrasonic.h"
 
-#include "WS2812.pio.h" // This header file gets produced during compilation from the WS2812.pio file
+#include "WS2812.pio.h" 
 #include "drivers/logging/logging.h"
 
 #define BUTTON_PIN 15  // Change to your button's GPIO pin
+#define UART_ID uart0 // UART ID for communication
+#define BAUD_RATE 115200 // Baud rate for UART communication
+#define TX_PIN 0 // GPIO pin for UART TX
+#define RX_PIN 1 // GPIO pin for UART RX
 
-#define UART_ID uart0
-#define BAUD_RATE 115200
-#define TX_PIN 0
-#define RX_PIN 1
-
-volatile bool button_pressed = false;
-
+volatile bool button_pressed = false; // Flag to indicate button press
 
 // Interrupt handler function
 void button_irq_handler(uint gpio, uint32_t events) {
@@ -28,6 +26,7 @@ void button_irq_handler(uint gpio, uint32_t events) {
 
 int main() {
     stdio_init_all();
+    // Initialise LCDs, and ultrasonic sensor 
     hx711_init();  
     ultra_init();
     tm1637_init();
@@ -36,7 +35,6 @@ int main() {
     uart_init(UART_ID, BAUD_RATE);
     gpio_set_function(TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(RX_PIN, GPIO_FUNC_UART);
-
 
     // Initialize button GPIO
     gpio_init(BUTTON_PIN);
@@ -49,6 +47,7 @@ int main() {
     const int NUM_MODES = 3; // Change this to the number of functions you want to toggle
 
      while (true) {
+        // Check if button was pressed
         if (button_pressed) {
             button_pressed = false;
             mode = (mode + 1) % NUM_MODES; // Cycle through modes
@@ -63,9 +62,8 @@ int main() {
                 printf("Entering idle mode\n");
             }
         }
-        
 
-        // Call different functions based on mode (without printing mode repeatedly)
+        // Call different functions based on mode
         switch (mode) {
             case 0:
                 lc_calibrate_send();

@@ -9,22 +9,20 @@
 #include "drivers/logging/logging.h"
 #include "hardware/adc.h"
 
+// TM1637 7-segment display pins
 #define TM1637_DIO_PIN 18
 #define TM1637_CLK_PIN 19
-
 #define TM1637_DIO_PIN2 11
 #define TM1637_CLK_PIN2 12
+#define BBIF_PIN 4 // IR sensor pins
 
-#define BBIF_PIN 4
-
+// Function prototypes for TM1637 display
 void tm1637_init_IR2();
 void tm1637_start_IR2();
 void tm1637_stop_IR2();
 void tm1637_write_byte_IR2(uint8_t b);
 void tm1637_display_digits_IR2(int d0, int d1, int d2, int d3, bool colon);
 void tm1637_set_brightness_IR2(uint8_t brightness);
-
-
 
 const uint8_t digitToSegment[] = {
     0x3f, // 0
@@ -39,6 +37,7 @@ const uint8_t digitToSegment[] = {
     0x6f  // 9
 };
 
+// Start communication with the TM1637 display
 void tm1637_start_IR() {
     gpio_put(TM1637_CLK_PIN, 1);
     gpio_put(TM1637_DIO_PIN, 1);
@@ -48,6 +47,7 @@ void tm1637_start_IR() {
     gpio_put(TM1637_CLK_PIN, 0);
 }
 
+// Stop communication with the TM1637 display
 void tm1637_stop_IR() {
     gpio_put(TM1637_CLK_PIN, 0);
     sleep_us(2);
@@ -58,6 +58,7 @@ void tm1637_stop_IR() {
     gpio_put(TM1637_DIO_PIN, 1);
 }
 
+// Write a byte to the TM1637 display
 void tm1637_write_byte_IR(uint8_t b) {
     for (int i = 0; i < 8; i++) {
         gpio_put(TM1637_CLK_PIN, 0);
@@ -76,17 +77,21 @@ void tm1637_write_byte_IR(uint8_t b) {
     gpio_put(TM1637_CLK_PIN, 0);
 }
 
+// Set brightness and display control
 void tm1637_set_brightness_IR(uint8_t brightness) {
     tm1637_start_IR();
     tm1637_write_byte_IR(0x88 | (brightness & 0x07));
     tm1637_stop_IR();
 }
 
+// Display digits on the TM1637 display
+// d0-d3 are the digits to display, colon indicates whether to show a colon
 void tm1637_display_digits_IR(int d0, int d1, int d2, int d3, bool colon) {
     tm1637_start_IR();
     tm1637_write_byte_IR(0x40); // Set auto-increment mode
     tm1637_stop_IR();
 
+    // Write data to display
     tm1637_start_IR();
     tm1637_write_byte_IR(0xc0); // Start address 0
     tm1637_write_byte_IR(digitToSegment[d0]);
@@ -98,6 +103,7 @@ void tm1637_display_digits_IR(int d0, int d1, int d2, int d3, bool colon) {
     tm1637_stop_IR();
 }
 
+// Initialize the TM1637 display for IR
 void tm1637_init_IR() {
     gpio_init(TM1637_DIO_PIN);
     gpio_init(TM1637_CLK_PIN);
@@ -105,12 +111,14 @@ void tm1637_init_IR() {
     gpio_set_dir(TM1637_CLK_PIN, GPIO_OUT);
 }
 
+// Initialize the IR sensor GPIO
 void init_IR() {
     gpio_init(BBIF_PIN);
     gpio_set_dir(BBIF_PIN, GPIO_IN);
     gpio_pull_up(BBIF_PIN);
 }
 
+// Function to run the IR timing system
 void run_IR() {
     static bool initialised = false;
     if (!initialised) {
@@ -125,6 +133,7 @@ void run_IR() {
         printf("IR system initialized.\n");
     }
 
+    // Static variables to keep state between calls
     static int minutes = 0;
     static int seconds = 0;
     static bool timing = false;
@@ -143,6 +152,7 @@ void run_IR() {
     static absolute_time_t last_beam_change = {0};
     static const uint32_t DEBOUNCE_TIME_US = 50000; // 50ms debounce
     
+    // Check if beam state has changed
     if (last_beam != beam_present) {
         absolute_time_t now = get_absolute_time();
         if (absolute_time_diff_us(last_beam_change, now) > DEBOUNCE_TIME_US) {
@@ -225,6 +235,7 @@ void run_IR() {
     }
 }
 
+// Start communication with the second TM1637 display
 void tm1637_start_IR2() {
     gpio_put(TM1637_CLK_PIN2, 1);
     gpio_put(TM1637_DIO_PIN2, 1);
@@ -234,6 +245,7 @@ void tm1637_start_IR2() {
     gpio_put(TM1637_CLK_PIN2, 0);
 }
 
+// Stop communication with the second TM1637 display
 void tm1637_stop_IR2() {
     gpio_put(TM1637_CLK_PIN2, 0);
     sleep_us(2);
@@ -244,6 +256,7 @@ void tm1637_stop_IR2() {
     gpio_put(TM1637_DIO_PIN2, 1);
 }
 
+// Write a byte to the second TM1637 display
 void tm1637_write_byte_IR2(uint8_t b) {
     for (int i = 0; i < 8; i++) {
         gpio_put(TM1637_CLK_PIN2, 0);
@@ -262,6 +275,7 @@ void tm1637_write_byte_IR2(uint8_t b) {
     gpio_put(TM1637_CLK_PIN2, 0);
 }
 
+// Display digits on the second TM1637 display
 void tm1637_display_digits_IR2(int d0, int d1, int d2, int d3, bool colon) {
     // Set auto-increment mode
     tm1637_start_IR2();
@@ -285,12 +299,14 @@ void tm1637_display_digits_IR2(int d0, int d1, int d2, int d3, bool colon) {
     tm1637_stop_IR2();
 }
 
+// Set brightness for the second TM1637 display
 void tm1637_set_brightness_IR2(uint8_t brightness) {
     tm1637_start_IR2();
     tm1637_write_byte_IR2(0x88 | (brightness & 0x07));
     tm1637_stop_IR2();
 }
 
+// Initialize the second TM1637 display for IR
 void tm1637_init_IR2() {
     gpio_init(TM1637_DIO_PIN2);
     gpio_init(TM1637_CLK_PIN2);
